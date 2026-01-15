@@ -17,13 +17,13 @@ class User(Base):
 
 
 class Order(Base):
-    ORDER_STATUSES=( ('PENDING','pending'),('IN_PROGRESS','in_progress'),('COMPLETED','completed'))
-    PIZZA_SIZES=(('SMALL','small'),('MEDIUM','medium'),('LARGE','large'))
+    ORDER_STATUSES=(('pending','PENDING'),('in_progress','IN_PROGRESS'),('completed','COMPLETED'))
+    PIZZA_SIZES=(('small','SMALL'),('medium','MEDIUM'),('large','LARGE'))
     __tablename__="orders"
     id =Column(Integer,primary_key=True,index=True)
     quantity = Column(Integer,nullable=False)
-    order_status=Column(ChoiceType(choices=ORDER_STATUSES),default='PENDING')
-    pizza_size=Column(ChoiceType(choices=PIZZA_SIZES),default='SMALL')
+    order_status = Column(String, default='pending')
+    pizza_size = Column(String, default='small')
     flavour=Column(String)
     user_id=Column(Integer,ForeignKey("user.id"))
     
