@@ -50,8 +50,28 @@ def update_order(order_id: int,order_data: updateOrderModel,db: Session = Depend
     order.pizza_size=order_data.pizza_size
     order.flavour=order_data.flavour
     db.commit()
-    return {"message": "Order updated successfully"}
+    return {"message": "Order updated successfully"} 
 
+@order_router.get("/order/{order_id}/",response_model=viewOrderModel)
+def get_order(order_id: int,db:Session=Depends(get_db),Authorize:AuthJWT=Depends()):
+    try:
+        Authorize.jwt_required()
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,detail="Invalid token")
+    
+    current_user=Authorize.get_jwt_subject()
+    user_id=db.query(User.id).filter(User.username==current_user).first()
+    if not user_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail="User not found")
+    
+    order=db.query(Order).filter(Order.id==order_id).first()
+    if not order:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail="Order not found")
+    
+    if order.user_id != user_id.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,detail="Not authorized to update this order")
+    return order
+    
 @order_router.delete("/order/delete/{order_id}/")
 def delete_order(order_id: int,db:Session=Depends(get_db),Authorize:AuthJWT=Depends()):
     try:
@@ -76,7 +96,7 @@ def delete_order(order_id: int,db:Session=Depends(get_db),Authorize:AuthJWT=Depe
     return {"message": "Order deleted successfully"}
 
 
-@order_router.put("/order/status/{order_id}/")
+@order_router.put("/admin/order/status/{order_id}/")
 def update_order_status(order_id: int,order_data:update_order_status,db:Session=Depends(get_db), Authorize:AuthJWT=Depends()):
     try:
         Authorize.jwt_required()
@@ -102,25 +122,7 @@ def update_order_status(order_id: int,order_data:update_order_status,db:Session=
     db.commit()
     return {"message": "Order status updated successfully"}
 
-@order_router.get("/order/{order_id}/",response_model=viewOrderModel)
-def get_order(order_id: int,db:Session=Depends(get_db),Authorize:AuthJWT=Depends()):
-    try:
-        Authorize.jwt_required()
-    except Exception as e:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,detail="Invalid token")
-    
-    current_user=Authorize.get_jwt_subject()
-    user_id=db.query(User.id).filter(User.username==current_user).first()
-    if not user_id:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail="User not found")
-    
-    order=db.query(Order).filter(Order.id==order_id).first()
-    if not order:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail="Order not found")
-    
-    if order.user_id != user_id.id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,detail="Not authorized to update this order")
-    return order
+
 
 @order_router.get("/user/orders",response_model=List[viewOrderModel])
 def get_user_orders(db: Session = Depends(get_db),Authorize:AuthJWT=Depends()):
@@ -140,13 +142,28 @@ def get_user_orders(db: Session = Depends(get_db),Authorize:AuthJWT=Depends()):
 
 
 
+@order_router.get("/admin/order/{user_id}",response_model=List[viewOrderModel])
+def get_user_order(user_id: int,db:Session=Depends(get_db), Authorize:AuthJWT=Depends()):
+    try:
+        Authorize.jwt_required()
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,detail="Invalid token")
+    
+    current_user=Authorize.get_jwt_subject()
+    user_id_db=db.query(User.id).filter(User.username==current_user).first()
+    is_staff=db.query(User.is_staff).filter(User.username==current_user).first()
 
-@order_router.get("/orders/{order_id}/")
-def get_order_superuser(order_id: int):
-    return {"message": "Order fetched successfully"}
+    customer_id=db.query(User.id).filter(User.id==user_id).first()
 
+    if not user_id_db:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail="User not found")
+    if not is_staff:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,detail="Not authorized")
+    
 
-
-@order_router.get("/user/order/{order_id}/")
-def get_specific_order(order_id: int):
-    return {"message": "Order placed successfully"}
+    user_temp=db.query(User).filter(User.id==user_id).first()
+    if not user_temp:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail="User not found")
+    
+    orders=db.query(Order).filter(Order.user_id==user_id).all()
+    return orders

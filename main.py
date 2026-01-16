@@ -1,12 +1,16 @@
 from fastapi import FastAPI
 from auth_routes import auth_router
 from order_routes import order_router
+from database import engine, Base
+from models import User, Order
 from fastapi_jwt_auth import AuthJWT
 from pydantic import BaseModel
 import os
 from dotenv import load_dotenv
 
 load_dotenv()
+
+Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
 
